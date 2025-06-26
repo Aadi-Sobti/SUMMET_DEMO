@@ -29,35 +29,34 @@
       height: 480px;
     }
 
-    video, canvas {
+    canvas {
       position: absolute;
-      width: 640px;
-      height: 480px;
       top: 0;
       left: 0;
+      width: 640px;
+      height: 480px;
+      transform: scaleX(-1); /* Mirror to match video */
     }
 
     video {
-      filter: contrast(2) brightness(1.5) sepia(1) hue-rotate(200deg) saturate(4);
-      transform: scaleX(-1);
-    }
-
-    canvas {
-      pointer-events: none;
+      display: none; /* Hide raw video */
     }
   </style>
 </head>
 <body>
   <h1>Thermal Human Detector</h1>
   <div class="container">
-    <video id="webcam" autoplay playsinline></video>
-    <canvas id="overlay"></canvas>
+    <video id="webcam" width="640" height="480" autoplay playsinline></video>
+    <canvas id="thermalCanvas" width="640" height="480"></canvas>
+    <canvas id="overlay" width="640" height="480"></canvas>
   </div>
 
   <script>
     const video = document.getElementById('webcam');
-    const canvas = document.getElementById('overlay');
-    const ctx = canvas.getContext('2d');
+    const thermalCanvas = document.getElementById('thermalCanvas');
+    const thermalCtx = thermalCanvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const overlayCtx = overlay.getContext('2d');
 
     async function setupCamera() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -67,30 +66,80 @@
       });
     }
 
+    function applyThermalEffect(imageData) {
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const brightness = 0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
+
+        // Simple color gradient: blue → purple → red → yellow → white
+        let r = 0, g = 0, b = 0;
+        if (brightness < 64) {
+          r = 0;
+          g = 0;
+          b = 255 * (brightness / 64);
+        } else if (brightness < 128) {
+          r = 128 * ((brightness - 64) / 64);
+          g = 0;
+          b = 255 - (127 * ((brightness - 64) / 64));
+        } else if (brightness < 192) {
+          r = 255;
+          g = 128 * ((brightness - 128) / 64);
+          b = 0;
+        } else {
+          r = 255;
+          g = 255;
+          b = 128 * ((brightness - 192) / 63);
+        }
+
+        data[i] = r;
+        data[i + 1] = g;
+        data[i + 2] = b;
+      }
+      return imageData;
+    }
+
     async function detectHumans() {
       const model = await cocoSsd.load();
       await setupCamera();
       video.play();
 
+      function renderFrame() {
+        // Draw raw frame
+        thermalCtx.save();
+        thermalCtx.scale(-1, 1);
+        thermalCtx.drawImage(video, -thermalCanvas.width, 0, thermalCanvas.width, thermalCanvas.height);
+        thermalCtx.restore();
+
+        // Apply thermal effect
+        let frame = thermalCtx.getImageData(0, 0, thermalCanvas.width, thermalCanvas.height);
+        let processed = applyThermalEffect(frame);
+        thermalCtx.putImageData(processed, 0, 0);
+
+        requestAnimationFrame(renderFrame);
+      }
+
       async function detectFrame() {
         const predictions = await model.detect(video);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
 
         predictions.forEach(pred => {
           if (pred.class === "person" && pred.score > 0.6) {
             const [x, y, width, height] = pred.bbox;
-            ctx.strokeStyle = "#00ff00";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, width, height);
-            ctx.fillStyle = "#00ff00";
-            ctx.font = "16px sans-serif";
-            ctx.fillText("Person", x, y > 20 ? y - 5 : y + 15);
+            const mirroredX = overlay.width - x - width; // Mirror X for alignment
+
+            overlayCtx.strokeStyle = "#00ff00";
+            overlayCtx.lineWidth = 2;
+            overlayCtx.strokeRect(mirroredX, y, width, height);
+            overlayCtx.fillStyle = "#00ff00";
+            overlayCtx.font = "16px sans-serif";
+            overlayCtx.fillText("Person", mirroredX, y > 20 ? y - 5 : y + 15);
           }
         });
 
         requestAnimationFrame(detectFrame);
       }
 
+      renderFrame();
       detectFrame();
     }
 
