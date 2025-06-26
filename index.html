@@ -1,17 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Human Detection</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Thermal Human Detector</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
   <style>
-    canvas { position: absolute; top: 0; left: 0; }
-    video { transform: scaleX(-1); display: block; }
+    body {
+      margin: 0;
+      background: #000;
+      font-family: sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      margin: 20px 0;
+      color: #ff5252;
+    }
+
+    .container {
+      position: relative;
+      width: 640px;
+      height: 480px;
+    }
+
+    video, canvas {
+      position: absolute;
+      width: 640px;
+      height: 480px;
+      top: 0;
+      left: 0;
+    }
+
+    video {
+      filter: contrast(2) brightness(1.5) sepia(1) hue-rotate(200deg) saturate(4);
+      transform: scaleX(-1);
+    }
+
+    canvas {
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
-  <video id="webcam" width="640" height="480" autoplay playsinline></video>
-  <canvas id="overlay" width="640" height="480"></canvas>
+  <h1>Thermal Human Detector</h1>
+  <div class="container">
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
 
   <script>
     const video = document.getElementById('webcam');
@@ -37,12 +78,13 @@
 
         predictions.forEach(pred => {
           if (pred.class === "person" && pred.score > 0.6) {
-            ctx.strokeStyle = "green";
+            const [x, y, width, height] = pred.bbox;
+            ctx.strokeStyle = "#00ff00";
             ctx.lineWidth = 2;
-            ctx.strokeRect(...pred.bbox);
+            ctx.strokeRect(x, y, width, height);
+            ctx.fillStyle = "#00ff00";
             ctx.font = "16px sans-serif";
-            ctx.fillStyle = "green";
-            ctx.fillText("Person", pred.bbox[0], pred.bbox[1] > 20 ? pred.bbox[1] - 5 : 10);
+            ctx.fillText("Person", x, y > 20 ? y - 5 : y + 15);
           }
         });
 
