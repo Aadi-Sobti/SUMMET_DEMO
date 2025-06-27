@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Thermal Human Detector</title>
-  <link rel="manifest" href="manifest.json">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.13.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
   <style>
@@ -69,8 +68,7 @@
   <h1>Thermal Human Detector</h1>
   <div class="controls">
     <button id="toggleCamera">Switch Camera</button>
-    <button id="startBtn" disabled>Start Detection</button>
-    <p style="color:gray;font-size:3vw;">Camera may take a few seconds to load...</p>
+    <button id="startBtn">Start Detection</button>
   </div>
   <div class="container">
     <video id="webcam" autoplay playsinline></video>
@@ -86,13 +84,6 @@
     const overlayCtx = overlay.getContext('2d');
 
     let facingMode = "environment";
-
-    window.onload = () => {
-      document.getElementById("startBtn").disabled = false;
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('service-worker.js');
-      }
-    };
 
     async function setupCamera() {
       if (video.srcObject) {
