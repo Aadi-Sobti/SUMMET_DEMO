@@ -84,6 +84,7 @@
     const overlayCtx = overlay.getContext('2d');
 
     let facingMode = "environment";
+    let model;
 
     async function setupCamera() {
       if (video.srcObject) {
@@ -121,8 +122,10 @@
       return imageData;
     }
 
-    async function detectHumans() {
-      const model = await cocoSsd.load();
+    async function startDetection() {
+      if (!model) {
+        model = await cocoSsd.load();
+      }
       await setupCamera();
       video.play();
       resizeCanvas();
@@ -177,13 +180,14 @@
 
     document.getElementById("startBtn").addEventListener("click", () => {
       document.getElementById("startBtn").style.display = "none";
-      detectHumans();
+      startDetection();
     });
 
-    document.getElementById("toggleCamera").addEventListener("click", () => {
+    document.getElementById("toggleCamera").addEventListener("click", async () => {
       facingMode = facingMode === "environment" ? "user" : "environment";
-      detectHumans();
+      await setupCamera();
     });
   </script>
 </body>
 </html>
+
